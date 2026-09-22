@@ -30,16 +30,15 @@ photo (OCR)**.
 
 ## Fonctionnalités
 
-| Domaine | Ce que fait l'application |
-|---|---|
-| **IA — prédiction** | Random Forest (scikit-learn) : risque de panne à 180 jours, validation temporelle sans fuite de données |
-| **IA — vision** | OpenCV (débruitage, redressement, binarisation) + Tesseract + extraction par regex + correction des confusions O/0, I/1… |
-| **Données** | ORM **SQLAlchemy** : requêtes paramétrées (anti-injection SQL), transactions, cascades |
-| **Architecture** | **API REST JSON** + interface dynamique **Vue.js 3 / Bootstrap 5** |
-| **Sécurité** | Secrets en variables d'environnement, validation serveur, en-têtes HTTP de sécurité |
-| **Saisie en masse** | Import **Excel/CSV** avec vérification à blanc, rapport d'erreurs ligne par ligne, export |
-| **Déploiement** | **Docker** + docker-compose, Gunicorn, **CI GitHub Actions** |
-| **Qualité** | **23 tests automatisés** (API, ML, OCR, import) |
+| Fonctionnalité | Description | Technologies |
+|---|---|---|
+| **Prédiction des pannes** | Estime pour chaque appareil le risque de panne dans les 6 prochains mois et signale les appareils trop vieux | scikit-learn (Random Forest) |
+| **Lecture de photo** | Lit automatiquement le numéro de série sur une photo de l'étiquette | OpenCV, Tesseract (OCR) |
+| **Inventaire** | Ajouter, modifier, rechercher et imprimer les fiches du matériel, avec l'historique des pannes et des affectations | Flask, SQLAlchemy |
+| **Import / export Excel** | Ajouter des centaines d'appareils d'un coup depuis Excel, avec vérification des erreurs avant l'import | pandas |
+| **Interface web** | Pages dynamiques qui se mettent à jour sans rechargement | Vue.js, Bootstrap, API REST |
+| **Sécurité** | Protection contre les injections SQL, secrets hors du code, vérification des saisies | SQLAlchemy, .env |
+| **Déploiement** | Lancement en une commande sur n'importe quel ordinateur, tests automatiques à chaque mise à jour | Docker, GitHub Actions, pytest |
 
 ---
 
