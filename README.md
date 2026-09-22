@@ -1,11 +1,5 @@
 # Gestion du parc informatique — IA de maintenance prédictive & OCR
 
-![tests](https://github.com/Aya-Bouchama/gestion-parc-informatique/actions/workflows/tests.yml/badge.svg)
-![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-3-000000?logo=flask)
-![scikit-learn](https://img.shields.io/badge/scikit--learn-Random%20Forest-F7931E?logo=scikitlearn&logoColor=white)
-![OpenCV](https://img.shields.io/badge/OpenCV-Tesseract%20OCR-5C3EE8?logo=opencv)
-![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 
 Application web de gestion du matériel informatique distribué par une **Direction Provinciale de
 l'Éducation Nationale** (Fès, Maroc) à ses établissements scolaires : inventaire, historique des
@@ -34,18 +28,18 @@ photo (OCR)**.
 
 ---
 
-## Ce que j'ai réalisé
+## Fonctionnalités
 
-| | Avant (prototype) | Après (ce dépôt) |
-|---|---|---|
-| **IA — prédiction** | — | Random Forest (scikit-learn) : risque de panne à 180 jours, validation temporelle sans fuite de données |
-| **IA — vision** | Saisie manuelle | OpenCV (débruitage, redressement, binarisation) + Tesseract + extraction par regex + correction des confusions O/0, I/1… |
-| **Données** | SQL brut, curseur global | ORM **SQLAlchemy** : requêtes paramétrées (anti-injection SQL), transactions, cascades |
-| **Architecture** | Pages HTML monolithiques | **API REST JSON** + interface dynamique **Vue.js 3 / Bootstrap 5** |
-| **Sécurité** | Mot de passe en clair dans le code | Secrets en variables d'environnement, validation serveur, en-têtes HTTP de sécurité |
-| **Saisie en masse** | — | Import **Excel/CSV** avec vérification à blanc, rapport d'erreurs ligne par ligne, export |
-| **DevOps** | Déploiement Apache/mod_wsgi fragile | **Docker** + docker-compose, Gunicorn, **CI GitHub Actions** |
-| **Qualité** | — | **23 tests automatisés** (API, ML, OCR, import) |
+| Domaine | Ce que fait l'application |
+|---|---|
+| **IA — prédiction** | Random Forest (scikit-learn) : risque de panne à 180 jours, validation temporelle sans fuite de données |
+| **IA — vision** | OpenCV (débruitage, redressement, binarisation) + Tesseract + extraction par regex + correction des confusions O/0, I/1… |
+| **Données** | ORM **SQLAlchemy** : requêtes paramétrées (anti-injection SQL), transactions, cascades |
+| **Architecture** | **API REST JSON** + interface dynamique **Vue.js 3 / Bootstrap 5** |
+| **Sécurité** | Secrets en variables d'environnement, validation serveur, en-têtes HTTP de sécurité |
+| **Saisie en masse** | Import **Excel/CSV** avec vérification à blanc, rapport d'erreurs ligne par ligne, export |
+| **Déploiement** | **Docker** + docker-compose, Gunicorn, **CI GitHub Actions** |
+| **Qualité** | **23 tests automatisés** (API, ML, OCR, import) |
 
 ---
 
@@ -187,5 +181,4 @@ existants sans créer de doublons.
 
 ---
 
-**Aya Bouchama** — élève ingénieure (Centrale Méditerranée · ENSMR), spécialisation IA / data.
-Licence MIT.
+**Aya Bouchama** 
