@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Fiche matériel — {{ m.numero_serie }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; color: #222; }
+        h1 { font-size: 22px; border-bottom: 2px solid #0d6efd; padding-bottom: 6px; }
+        table { border-collapse: collapse; width: 100%; max-width: 640px; }
+        th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #ddd; }
+        th { width: 40%; background: #f5f7fb; }
+        .meta { color: #666; font-size: 12px; margin-top: 30px; }
+        .no-print { margin-top: 20px; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+<h1>Fiche du matériel</h1>
+<table>
+    <tr><th>Type</th><td>{{ m.type }}</td></tr>
+    <tr><th>Numéro de série</th><td>{{ m.numero_serie }}</td></tr>
+    <tr><th>Modèle</th><td>{{ m.modele }}</td></tr>
+    <tr><th>Emplacement</th><td>{{ m.emplacement }}</td></tr>
+    <tr><th>ID GRESA</th><td>{{ d.id_gresa if d else '—' }}</td></tr>
+    <tr><th>Date de distribution</th><td>{{ d.date_distribution.strftime('%d/%m/%Y') if d else '—' }}</td></tr>
+    <tr><th>Nombre de matériel</th><td>{{ d.nobre_materiel if d else '—' }}</td></tr>
+    <tr><th>Pannes déclarées</th><td>{{ m.pannes|length }}</td></tr>
+</table>
+<p class="meta">Imprimé le {{ now.strftime('%d/%m/%Y à %H:%M') }}</p>
+<div class="no-print"><button onclick="window.print()">Imprimer</button></div>
+</body>
+</html>

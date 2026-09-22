@@ -1,0 +1,5 @@
+[v-cloak] { display: none; }
+.toast-zone { position: fixed; top: 1rem; right: 1rem; z-index: 2000; max-width: 380px; }
+.toast-zone .alert { margin-bottom: .5rem; }
+.ocr-box { background: #f1f5ff; border: 1px dashed #8aa4e8; }
+code { color: #0b5ed7; }

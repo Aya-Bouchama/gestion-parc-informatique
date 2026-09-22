@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /app/data
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    volumes:
+      - app_data:/app/data          # base SQLite (persistante)
+      - ml_models:/app/models_ml    # modèle entraîné
+
+volumes:
+  app_data:
+  ml_models:

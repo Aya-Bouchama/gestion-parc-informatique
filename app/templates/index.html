@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gestion du matériel informatique</title>
+    <!-- Bibliothèques embarquées localement (fonctionne sans Internet / sur intranet) -->
+    <link href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendor/bootstrap-icons.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
+</head>
+<body class="bg-body-tertiary">
+{% raw %}
+<div id="app" v-cloak>
+    <nav class="navbar navbar-dark bg-primary mb-4">
+        <div class="container">
+            <span class="navbar-brand"><i class="bi bi-pc-display"></i> Gestion du matériel informatique</span>
+            <span class="badge" :class="health.ocr ? 'text-bg-light' : 'text-bg-warning'">
+                OCR {{ health.ocr ? 'actif' : 'indisponible' }}
+            </span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Notifications -->
+        <div class="toast-zone">
+            <div v-for="t in toasts" :key="t.id" class="alert shadow-sm" :class="'alert-' + t.type">{{ t.msg }}</div>
+        </div>
+
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item"><a class="nav-link" :class="{active: tab==='inventaire'}" href="#" @click.prevent="tab='inventaire'"><i class="bi bi-list-ul"></i> Inventaire</a></li>
+            <li class="nav-item"><a class="nav-link" :class="{active: tab==='maintenance'}" href="#" @click.prevent="ouvrirMaintenance"><i class="bi bi-activity"></i> Maintenance prédictive</a></li>
+        </ul>
+
+        <!-- ================= INVENTAIRE ================= -->
+        <section v-if="tab==='inventaire'">
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <div class="input-group" style="max-width: 420px">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input v-model="q" @input="rechercherDebounce" class="form-control" placeholder="N° de série, type, modèle, GRESA…">
+                </div>
+                <div class="ms-auto d-flex gap-2">
+                    <a class="btn btn-outline-secondary" href="/api/v1/export"><i class="bi bi-download"></i> Exporter</a>
+                    <button class="btn btn-outline-primary" @click="ouvrirImport"><i class="bi bi-file-earmark-spreadsheet"></i> Importer un fichier</button>
+                    <button class="btn btn-primary" @click="ouvrirForm()"><i class="bi bi-plus-lg"></i> Ajouter un matériel</button>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th>Type</th><th>N° de série</th><th>Emplacement</th><th>Modèle</th>
+                            <th>ID GRESA</th><th>Date distribution</th><th class="text-end">Nombre</th><th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-if="chargement"><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></td></tr>
+                        <tr v-else-if="!materiels.length"><td colspan="8" class="text-center text-muted py-4">Aucun matériel</td></tr>
+                        <tr v-for="m in materiels" :key="m.materiel_id">
+                            <td>{{ m.type }}</td>
+                            <td><code>{{ m.numero_serie }}</code></td>
+                            <td>{{ m.emplacement }}</td>
+                            <td>{{ m.modele }}</td>
+                            <td>{{ m.id_gresa }}</td>
+                            <td>{{ dateFr(m.date_distribution) }}</td>
+                            <td class="text-end">{{ m.nobre_materiel }}</td>
+                            <td class="text-end text-nowrap">
+                                <button class="btn btn-sm btn-outline-secondary" title="Modifier" @click="ouvrirForm(m)"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-warning" title="Déclarer une panne" @click="ouvrirPanne(m)"><i class="bi bi-tools"></i></button>
+                                <a class="btn btn-sm btn-outline-dark" title="Imprimer" :href="'/imprimer/' + m.materiel_id" target="_blank"><i class="bi bi-printer"></i></a>
+                                <button class="btn btn-sm btn-outline-danger" title="Supprimer" @click="supprimer(m)"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= MAINTENANCE ================= -->
+        <section v-if="tab==='maintenance'">
+            <div class="row g-3 mb-3">
+                <div class="col-md-8">
+                    <div class="card shadow-sm h-100"><div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-diagram-3"></i> Modèle Random Forest</h5>
+                        <p class="text-muted small mb-2">Probabilité de panne dans les 180 prochains jours, calculée à partir de l'historique de distribution et d'incidents.</p>
+                        <div v-if="modele.entraine" class="d-flex flex-wrap gap-3 small">
+                            <span><b>ROC-AUC (test) :</b> {{ modele.roc_auc_test ?? '—' }}</span>
+                            <span><b>Précision :</b> {{ modele.precision_panne ?? '—' }}</span>
+                            <span><b>Rappel :</b> {{ modele.rappel_panne ?? '—' }}</span>
+                            <span><b>Échantillons :</b> {{ modele.n_echantillons }}</span>
+                            <span><b>Entraîné le :</b> {{ dateFr(modele.entraine_le) }}</span>
+                        </div>
+                        <div v-else class="alert alert-info small mb-0">Modèle non entraîné — cliquez sur « Entraîner ».</div>
+                    </div></div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100"><div class="card-body d-flex flex-column justify-content-center">
+                        <button class="btn btn-success" :disabled="entrainement" @click="entrainer">
+                            <span v-if="entrainement" class="spinner-border spinner-border-sm"></span>
+                            <i v-else class="bi bi-cpu"></i> Entraîner / ré-entraîner
+                        </button>
+                        <div class="d-flex justify-content-around mt-3 small text-center">
+                            <div><div class="fs-4 fw-bold text-danger">{{ stats.eleve }}</div>risque élevé</div>
+                            <div><div class="fs-4 fw-bold text-warning">{{ stats.moyen }}</div>risque moyen</div>
+                            <div><div class="fs-4 fw-bold text-secondary">{{ stats.obsoletes }}</div>obsolètes</div>
+                        </div>
+                    </div></div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                        <tr><th>Matériel</th><th>N° de série</th><th>Emplacement</th><th class="text-end text-nowrap">Âge</th><th style="width:200px">Obsolescence</th><th class="text-end">Pannes</th><th class="text-end text-nowrap">P(panne 180 j)</th><th>Risque</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="p in predictions" :key="p.materiel_id">
+                            <td>{{ p.type }} <span class="text-muted small">{{ p.modele }}</span></td>
+                            <td><code>{{ p.numero_serie }}</code></td>
+                            <td>{{ p.emplacement }}</td>
+                            <td class="text-end text-nowrap">{{ p.age_ans }} / {{ p.duree_vie_ans }} ans</td>
+                            <td>
+                                <div class="progress" style="height: 14px">
+                                    <div class="progress-bar" :class="p.obsolete ? 'bg-danger' : (p.obsolescence_pct > 75 ? 'bg-warning' : 'bg-success')"
+                                         :style="{width: Math.min(p.obsolescence_pct, 100) + '%'}">{{ p.obsolescence_pct }} %</div>
+                                </div>
+                            </td>
+                            <td class="text-end">{{ p.nb_pannes }}</td>
+                            <td class="text-end">{{ p.proba_panne_180j === null ? '—' : (p.proba_panne_180j * 100).toFixed(0) + ' %' }}</td>
+                            <td><span class="badge" :class="badgeRisque(p.risque)">{{ p.risque }}</span></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ================= MODALE AJOUT / MODIFICATION ================= -->
+    <div class="modal fade" id="modalForm" tabindex="-1">
+        <div class="modal-dialog modal-lg"><div class="modal-content">
+            <form @submit.prevent="enregistrer">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ form.materiel_id ? 'Modifier le matériel' : 'Ajouter un matériel' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- OCR -->
+                    <div class="ocr-box p-3 mb-3 rounded">
+                        <label class="form-label fw-semibold mb-1"><i class="bi bi-camera"></i> Lire le numéro de série depuis une photo</label>
+                        <input type="file" accept="image/*" capture="environment" class="form-control form-control-sm" @change="lancerOCR" :disabled="!health.ocr || ocr.enCours">
+                        <div v-if="ocr.enCours" class="small mt-2"><span class="spinner-border spinner-border-sm"></span> Analyse de l'image…</div>
+                        <div v-if="ocr.candidats.length" class="small mt-2">
+                            Candidats détectés :
+                            <button v-for="c in ocr.candidats" type="button" class="btn btn-sm btn-outline-primary ms-1 mb-1" @click="form.numero_serie = c.valeur">{{ c.valeur }}</button>
+                        </div>
+                        <div v-if="ocr.existant" class="alert alert-warning small mt-2 mb-0">
+                            Ce numéro correspond déjà à un matériel enregistré : {{ ocr.existant.type }} {{ ocr.existant.modele }} ({{ ocr.existant.emplacement }}).
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6" v-for="c in champs" :key="c.name">
+                            <label class="form-label">{{ c.label }}</label>
+                            <input :type="c.type || 'text'" class="form-control" :class="{'is-invalid': erreurs[c.name]}"
+                                   v-model="form[c.name]" :min="c.min" :max="c.max" required>
+                            <div class="invalid-feedback">{{ erreurs[c.name] }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+                    <button class="btn btn-primary" :disabled="envoi">Enregistrer</button>
+                </div>
+            </form>
+        </div></div>
+    </div>
+
+    <!-- ================= MODALE IMPORT ================= -->
+    <div class="modal fade" id="modalImport" tabindex="-1">
+        <div class="modal-dialog modal-lg"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet"></i> Importer mes données</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <ol class="small">
+                    <li>Téléchargez le <a href="/api/v1/import/modele">modèle Excel</a> et remplissez-le (feuille <b>Materiels</b>, et <b>Pannes</b> si vous avez l'historique).</li>
+                    <li>Choisissez le fichier (.xlsx ou .csv), cliquez sur <b>Vérifier</b> : rien n'est enregistré.</li>
+                    <li>Si le résultat vous convient, cliquez sur <b>Importer</b>.</li>
+                </ol>
+                <input type="file" class="form-control" accept=".xlsx,.xlsm,.xls,.csv" @change="imp.fichier = $event.target.files[0]; imp.rapport = null">
+
+                <div v-if="imp.rapport" class="mt-3">
+                    <div class="alert mb-2" :class="imp.rapport.erreurs.length ? 'alert-warning' : 'alert-success'">
+                        <b>{{ imp.rapport.simulation ? 'Vérification' : 'Import terminé' }} :</b>
+                        {{ imp.rapport.lignes }} lignes —
+                        {{ imp.rapport.crees }} nouveaux, {{ imp.rapport.mis_a_jour }} mis à jour,
+                        {{ imp.rapport.distributions_ajoutees }} distributions ajoutées,
+                        {{ imp.rapport.pannes_ajoutees }} pannes,
+                        <b>{{ imp.rapport.erreurs.length }} erreur(s)</b>
+                        <span v-if="imp.rapport.simulation && imp.rapport.erreurs.length"> — les lignes en erreur seront ignorées.</span>
+                    </div>
+                    <table v-if="imp.rapport.erreurs.length" class="table table-sm small">
+                        <thead><tr><th>Feuille</th><th>Ligne</th><th>Problème</th></tr></thead>
+                        <tbody><tr v-for="e in imp.rapport.erreurs">
+                            <td>{{ e.feuille }}</td><td>{{ e.ligne }}</td>
+                            <td><span v-for="(v, k) in e.erreurs" class="d-block"><b>{{ k }}</b> : {{ v }}</span></td>
+                        </tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-primary" :disabled="!imp.fichier || imp.enCours" @click="importer(true)">
+                    <span v-if="imp.enCours" class="spinner-border spinner-border-sm"></span> Vérifier
+                </button>
+                <button class="btn btn-primary" :disabled="!imp.fichier || imp.enCours" @click="importer(false)">Importer</button>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- ================= MODALE PANNE ================= -->
+    <div class="modal fade" id="modalPanne" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <form @submit.prevent="enregistrerPanne">
+                <div class="modal-header"><h5 class="modal-title">Déclarer une panne</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <p class="small text-muted">{{ panne.libelle }}</p>
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-control mb-2" v-model="panne.date_panne" :max="aujourdhui" required>
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" v-model="panne.description" maxlength="255" rows="3"></textarea>
+                </div>
+                <div class="modal-footer"><button class="btn btn-warning">Enregistrer</button></div>
+            </form>
+        </div></div>
+    </div>
+</div>
+{% endraw %}
+
+<script src="{{ url_for('static', filename='vendor/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/vue.global.prod.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
