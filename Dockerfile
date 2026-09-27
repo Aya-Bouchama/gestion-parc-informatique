@@ -1,6 +1,7 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
+    DATA_DIR=/app/data \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
@@ -15,11 +16,12 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY . .
-RUN useradd --create-home appuser && mkdir -p models_ml data && chown -R appuser /app
+RUN chmod +x start.sh \
+ && useradd --create-home appuser && mkdir -p models_ml data && chown -R appuser /app
 USER appuser
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
-  CMD curl -fs http://localhost:8000/api/v1/health || exit 1
+  CMD curl -fs http://localhost:${PORT:-8000}/api/v1/health || exit 1
 
-CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8000", "--timeout", "120", "wsgi:application"]
+CMD ["./start.sh"]
