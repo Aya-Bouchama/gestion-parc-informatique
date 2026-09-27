@@ -1,5 +1,7 @@
 # Gestion du parc informatique — IA de maintenance prédictive & OCR
 
+🔗 **Démo en ligne :** <https://gestion-parc-informatique.onrender.com>  
+*(hébergement gratuit : le premier chargement peut prendre environ 1 minute, le temps que le serveur se réveille)*
 
 Application web de gestion du matériel informatique distribué par une **Direction Provinciale de
 l'Éducation Nationale** (Fès, Maroc) à ses établissements scolaires : inventaire, historique des
@@ -38,7 +40,7 @@ photo (OCR)**.
 | **Import / export Excel** | Ajouter des centaines d'appareils d'un coup depuis Excel, avec vérification des erreurs avant l'import | pandas |
 | **Interface web** | Pages dynamiques qui se mettent à jour sans rechargement | Vue.js, Bootstrap, API REST |
 | **Sécurité** | Protection contre les injections SQL, secrets hors du code, vérification des saisies | SQLAlchemy, .env |
-| **Déploiement** | Lancement en une commande sur n'importe quel ordinateur, tests automatiques à chaque mise à jour | Docker, GitHub Actions, pytest |
+| **Déploiement** | Application en ligne, lancement en une commande sur n'importe quel ordinateur, tests automatiques à chaque mise à jour | Docker, Gunicorn, Render, GitHub Actions, pytest |
 
 ---
 
@@ -119,6 +121,32 @@ La base est un fichier **SQLite** (`data/gestion.sqlite3`) créé automatiquemen
 
 ---
 
+## Déploiement en ligne (Render)
+
+L'application est déployée sur [Render](https://render.com) (offre gratuite) à partir du `Dockerfile` :
+<https://gestion-parc-informatique.onrender.com>
+
+Le script [`start.sh`](start.sh) est lancé au démarrage du conteneur :
+1. si la base n'existe pas encore, il **importe les données de démonstration** puis **entraîne le modèle** ;
+2. il démarre **Gunicorn** (serveur de production) sur le port fourni par l'hébergeur (`$PORT`).
+
+Configuration du service Render :
+
+| Paramètre | Valeur |
+|---|---|
+| Language | Docker |
+| Instance Type | Free |
+| Variables d'environnement | `SECRET_KEY` (générée), `OCR_LANG=eng+fra` |
+| Health Check Path | `/api/v1/health` |
+
+Chaque `git push` sur `main` redéploie automatiquement l'application.
+
+> **Offre gratuite :** le service se met en veille après 15 minutes sans visite, et le disque est
+> réinitialisé à chaque redémarrage — la démo revient alors à son état initial (données fictives
+> + modèle ré-entraîné).
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -143,7 +171,7 @@ app/
 ├── cli.py               commandes : import-donnees, ml-train, seed-demo, modele-import
 ├── templates/ static/   interface Vue.js (bibliothèques embarquées : fonctionne hors ligne)
 tests/                   23 tests pytest
-Dockerfile · docker-compose.yml · .github/workflows/tests.yml
+Dockerfile · docker-compose.yml · start.sh · .github/workflows/tests.yml
 ```
 
 ### Principales routes de l'API
@@ -173,8 +201,9 @@ existants sans créer de doublons.
 
 - Les métriques du modèle sont obtenues sur des **données simulées** ; elles devront être
   recalculées sur l'historique réel des pannes.
-- **Pas d'authentification** : application prévue pour un intranet. Étape suivante : comptes
-  utilisateurs et rôles (Flask-Login / JWT), HTTPS derrière un reverse proxy.
+- **Pas d'authentification** : application prévue pour un intranet. Dans la démo publique,
+  n'importe quel visiteur peut modifier les données (elles sont réinitialisées au redémarrage).
+  Étape suivante : comptes utilisateurs et rôles (Flask-Login / JWT).
 - OCR : ajout de la lecture des **codes-barres / QR codes** (pyzbar), souvent présents sur les étiquettes.
 - Modèle : essai de modèles de survie (durée avant panne) et de gradient boosting.
 
